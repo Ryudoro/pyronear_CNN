@@ -429,6 +429,10 @@ def extract_data_from_DS_fp_newlines_multiple_bbox(dataset_dir, base_dir, input_
             y_min = None
             x_max = None
             y_max = None
+            x_min_real = None
+            y_min_real = None
+            x_max_real = None
+            y_max_real = None
             bbox_abs = None
             
             # Append the values to their respective lists

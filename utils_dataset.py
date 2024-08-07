@@ -35,6 +35,48 @@ def load_and_process_image(image_path, bbox, target_size=(224, 224)):
     
     return preprocessed_image
 
+def load_and_process_image2(image_path, bbox, target_size=(224, 224), ratio=0.1):
+         """
+         Charge et traite une image : recadre selon la bbox et redimensionne.
+         """
+         image = cv2.imread(image_path)
+ 
+         x_center, y_center, width, height = bbox
+         x_center *= image.shape[1]
+         y_center *= image.shape[0]
+         width *= image.shape[1]
+         height *= image.shape[0]
+ 
+         x = int(x_center - width / 2 - ratio*width/2)
+         y = int(y_center - height / 2 - ratio*height/2)
+         width = int(width *(1+ratio))
+         height = int(height *(1+ratio))
+ 
+         if x < 0:
+                 width -= int(x)
+                 x = 0
+         if x+width > image.shape[1]: 
+                 x -= int(abs(image.shape[1] - (x+width)))
+                 if x<0:
+                        x=0
+         if y < 0:
+                 height -= int(y)
+                 y = 0
+         if y+height > image.shape[0]: 
+                 y -= int(abs(image.shape[0] - (y+height)))
+                 if y<0:
+                         y=0
+ 
+         cropped_image = image[y:y+int(height), x:x+int(width)]
+         cropped_height, cropped_width = cropped_image.shape[:2]
+         
+         resized_image = cv2.resize(cropped_image, target_size)
+ 
+         image_array = img_to_array(resized_image)
+         preprocessed_image = preprocess_input(image_array)
+ 
+         return preprocessed_image 
+
 def prepare_sequences(df, data_dir ="dataset_pyronear_yolo_lstm", sequence_length=5):
     """
     Prépare les séquences d'images pour l'entrée du modèle.
@@ -52,7 +94,7 @@ def prepare_sequences(df, data_dir ="dataset_pyronear_yolo_lstm", sequence_lengt
             image_path = os.path.join(data_dir, row['Rel_Image_Path'])
             
             bbox = row[['yolo_bbox_xcenter', 'yolo_bbox_ycenter', 'yolo_bbox_width', 'yolo_bbox_height']]
-            processed_image = load_and_process_image(image_path, bbox)
+            processed_image = load_and_process_image2(image_path, bbox)
             images.append(processed_image)
         
             y_temp.append(row['new_label'])

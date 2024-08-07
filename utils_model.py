@@ -276,7 +276,6 @@ def compile_with_loss(model, alpha=1.0, learning_rate = 1e-3):
     model.compile(optimizer=Adam(learning_rate = learning_rate), loss=RecallMaximizingLoss(alpha=0.75, gamma=2), metrics=["accuracy"])
 
 def compile_and_fit(model, train_dataset, val_dataset, initial_epochs=10, fine_tune_epochs=10, fine_tune_layers=10, initial_lr=1e-3, fine_tune_lr=1e-4, alpha=1.0):
-    model.compile(optimizer=Adam(learning_rate = initial_lr), loss=combined_loss, metrics=["accuracy"])
     def lr_scheduler(epoch, lr):
       if epoch < 1:
           return lr
@@ -284,6 +283,7 @@ def compile_and_fit(model, train_dataset, val_dataset, initial_epochs=10, fine_t
           return lr * tf.math.exp(-0.1)
 
     lr_callback = tf.keras.callbacks.LearningRateScheduler(lr_scheduler, verbose=1)
+    model.compile(optimizer=Adam(learning_rate = initial_lr), loss=combined_loss, metrics=["accuracy"])
     print("Training with frozen layers")
     metrics_callback = MetricsCallback(train_dataset, val_dataset, batch_interval=5, log_file="frozen_metrics_log.csv")
     model.fit(train_dataset, epochs=initial_epochs, validation_data=val_dataset,callbacks =[metrics_callback, lr_callback])
@@ -293,7 +293,8 @@ def compile_and_fit(model, train_dataset, val_dataset, initial_epochs=10, fine_t
             for sub_layer in layer.layer.layers[-fine_tune_layers:]:
                 sub_layer.trainable = True
 
+    lr_callback2 = tf.keras.callbacks.LearningRateScheduler(lr_scheduler, verbose=1)
     model.compile(optimizer=Adam(learning_rate = fine_tune_lr), loss=combined_loss, metrics=["accuracy"])
     print("Fine-tuning with unfrozen layers")
     metrics_callback2 = MetricsCallback(train_dataset, val_dataset, batch_interval=5, log_file="unfrozen_metrics_log.csv")
-    model.fit(train_dataset, epochs=fine_tune_epochs, validation_data=val_dataset,callbacks =[metrics_callback2, lr_callback])
+    model.fit(train_dataset, epochs=fine_tune_epochs, validation_data=val_dataset,callbacks =[metrics_callback2, lr_callback2])

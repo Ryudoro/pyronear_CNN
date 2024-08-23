@@ -10,12 +10,26 @@ import numpy as np
 import argparse
 
 class GetTimeSeriesGroups(): 
-    def __init__(self, all_data_dir, csv_output_dir, nb_seconds_to_separate_groups):
+    def __init__(self, all_data_dir:str, csv_output_dir:str, nb_seconds_to_separate_groups:str):
+        """Class to group images into time series based on this condition. 
+        Create new group if 2 consecutive images have datetime > time_condition_sec in seconds.
+
+        Args:
+            all_data_dir (str): Path to the main directory with all the data.
+            csv_output_dir (str): Path to output directory to save the csv containing different time series separated by the time condition.
+            nb_seconds_to_separate_groups (str): Time gap in seconds to separate time series. Defaults to 59.
+        """
         self.all_data_dir = all_data_dir
         self.csv_output_dir = csv_output_dir
         self.nb_seconds_to_separate_groups = nb_seconds_to_separate_groups
 
-    def get_group_time_series(self, input_directory, output_csv_path): 
+    def get_group_time_series(self, input_directory:str, output_csv_path:str):
+        """Group images into time series based on this condition.
+
+        Args:
+            input_directory (str): Path to input directory with images to separate into time series.
+            output_csv_path (str): Path to save csv with time series.
+        """
         imgs = glob.glob(os.path.join(input_directory, "*.jpg"))
         imgs.sort()
         
@@ -44,28 +58,46 @@ class GetTimeSeriesGroups():
         df = pd.DataFrame({'Key': keys, 'Image_Path': image_paths})
         df.to_csv(output_csv_path, index=False)
 
-    def process(self): 
+    def process(self) -> tuple: 
+        """Process 3 datasets: DS_fp, pyronear_ds_03_2024 train and validation
+
+        Returns:
+            tuple: 3 csv paths
+                - output_csv_path_DS_fp : Path to csv with time series for DS_fp dataset.
+                - output_csv_path_pyronear_ds_03_2024_train : Path to csv with time series for pyronear_ds_03_2024 train.
+                - output_csv_path_pyronear_ds_03_2024_val : Path to csv with time series for pyronear_ds_03_2024 validation.
+        """
         # Get groups 
         logging.info("  Group time series to CSV - Dataset: DS_fp.")
         input_dir_DS_fp = os.path.join(self.all_data_dir, "DS_fp/images/")
-        output_csv_path_DS_fp = os.path.join(self.csv_output_dir, "df_group_DS_fp_VF.csv")
+        output_csv_path_DS_fp = os.path.join(self.csv_output_dir, "df_group_DS_fp.csv")  
         self.get_group_time_series(input_dir_DS_fp, output_csv_path_DS_fp)
 
         logging.info("  Group time series to CSV - Dataset: pyronear_ds_03_2024 train.")
         input_dir_pyronear_ds_03_2024_train = os.path.join(self.all_data_dir, "pyronear_ds_03_2024/images/train/")
-        output_csv_path_pyronear_ds_03_2024_train = os.path.join(self.csv_output_dir, "df_group_pyronear_ds_03_2024_train_VF.csv")
+        output_csv_path_pyronear_ds_03_2024_train = os.path.join(self.csv_output_dir, "df_group_pyronear_ds_03_2024_train.csv")
         self.get_group_time_series(input_dir_pyronear_ds_03_2024_train, output_csv_path_pyronear_ds_03_2024_train)
 
         logging.info("  Group time series to CSV - Dataset: pyronear_ds_03_2024 val.")
         input_dir_pyronear_ds_03_2024_val = os.path.join(self.all_data_dir, "pyronear_ds_03_2024/images/val/")
-        output_csv_path_pyronear_ds_03_2024_val = os.path.join(self.csv_output_dir, "df_group_pyronear_ds_03_2024_val_VF.csv")
+        output_csv_path_pyronear_ds_03_2024_val = os.path.join(self.csv_output_dir, "df_group_pyronear_ds_03_2024_val.csv")
         self.get_group_time_series(input_dir_pyronear_ds_03_2024_val, output_csv_path_pyronear_ds_03_2024_val)
 
         return output_csv_path_DS_fp, output_csv_path_pyronear_ds_03_2024_train, output_csv_path_pyronear_ds_03_2024_val
 
 
 class ExtractRawDataFromDataset(): 
-    def __init__(self, all_data_dir, csv_output_dir, csv_path_DS_fp_groups, csv_path_pyronear_ds_03_2024_train_groups, csv_path_pyronear_ds_03_2024_val_groups, get_abs_bbox_coords):
+    def __init__(self, all_data_dir: str, csv_output_dir: str, csv_path_DS_fp_groups: str, csv_path_pyronear_ds_03_2024_train_groups: str, csv_path_pyronear_ds_03_2024_val_groups: str, get_abs_bbox_coords: bool):
+        """Extract raw data from datasets : read images and labels to get related paths, bbox coordinates and other info.
+
+        Args:
+            all_data_dir (str): Path to directory with all data.
+            csv_output_dir (str): Path of output directory to save CSV results.
+            csv_path_DS_fp_groups (str): Path to CSV with DS_fp time series, grouped using class GetTimeSeriesGroups().
+            csv_path_pyronear_ds_03_2024_train_groups (str): Path to CSV with pyronear_ds_03_2024_train time series, grouped using class GetTimeSeriesGroups().
+            csv_path_pyronear_ds_03_2024_val_groups (str): Path to CSV with pyronear_ds_03_2024_val time series, grouped using class GetTimeSeriesGroups().
+            get_abs_bbox_coords (bool): boolean to convert YOLO bbox to absolute coordinates in the image shape.
+        """
         self.all_data_dir = all_data_dir
         self.csv_output_dir = csv_output_dir
         self.csv_path_DS_fp_groups = csv_path_DS_fp_groups
@@ -73,27 +105,35 @@ class ExtractRawDataFromDataset():
         self.csv_path_pyronear_ds_03_2024_val_groups = csv_path_pyronear_ds_03_2024_val_groups
         self.get_abs_bbox_coords = get_abs_bbox_coords
 
-    def extract_data(self, dataset_name):
+    def extract_data(self, dataset_name: str) -> str:
+        """Extract raw data from images/labels for a given dataset_name: related paths to images/labels, YOLO bbox coordinates.
+
+        Args:
+            dataset_name (str): Name of the dataset to extract raw data.
+
+        Returns:
+            str: output_csv_path, Output path of the CSV with extracted raw data.
+        """
         if dataset_name == "DS_fp":
             images_dir = os.path.join(self.all_data_dir, "DS_fp/images/")
             labels_dir = os.path.join(self.all_data_dir, "DS_fp/labels")
             dataset_dir = os.path.join(self.all_data_dir, "DS_fp")
             input_csv_path = self.csv_path_DS_fp_groups
-            output_csv_path = os.path.join(self.csv_output_dir, f"df_{dataset_name}_newlines_multiple_bbox_VF.csv")
+            output_csv_path = os.path.join(self.csv_output_dir, f"df_{dataset_name}_newlines_multiple_bbox.csv")
 
         if dataset_name == "pyronear_ds_03_2024_train": 
             images_dir = os.path.join(self.all_data_dir, "pyronear_ds_03_2024/images", "train")
             labels_dir = os.path.join(self.all_data_dir, "pyronear_ds_03_2024/labels", "train")
             dataset_dir = os.path.join(self.all_data_dir, "pyronear_ds_03_2024")
             input_csv_path = self.csv_path_pyronear_ds_03_2024_train_groups
-            output_csv_path = os.path.join(self.csv_output_dir, f"df_{dataset_name}_w_datetime_groups_VF.csv")
+            output_csv_path = os.path.join(self.csv_output_dir, f"df_{dataset_name}_w_datetime_groups.csv")
 
         if dataset_name == "pyronear_ds_03_2024_val": 
             images_dir = os.path.join(self.all_data_dir, "pyronear_ds_03_2024/images", "val")
             labels_dir = os.path.join(self.all_data_dir, "pyronear_ds_03_2024/labels", "val")
             dataset_dir = os.path.join(self.all_data_dir, "pyronear_ds_03_2024")
             input_csv_path = self.csv_path_pyronear_ds_03_2024_val_groups
-            output_csv_path = os.path.join(self.csv_output_dir, f"df_{dataset_name}_w_datetime_groups_VF.csv")
+            output_csv_path = os.path.join(self.csv_output_dir, f"df_{dataset_name}_w_datetime_groups.csv")
        
         df_group = pd.read_csv(input_csv_path)
         group_list = df_group.Key.tolist()
@@ -323,8 +363,16 @@ class ExtractRawDataFromDataset():
 
         return output_csv_path
 
-    def process_data(self): 
-        logging.info("  Extract data from dataset DS_fp : multiple labels per image are saved in a new row.")
+    def process_data(self) -> tuple:
+        """Process the 3 datasets to get their raw data.
+
+        Returns:
+            tuple: 3 paths to CSV with extracted raw data from the 3 datasets.
+                - csv_path_data_ds_fp: Path to csv with extracted raw data from dataset DS_fp.
+                - csv_path_data_train: Path to csv with extracted raw data from dataset pyronear_ds_03_2024_train.
+                - csv_path_data_val: Path to csv with extracted raw data from dataset pyronear_ds_03_2024_val.
+        """
+        logging.info(" Extract data from dataset DS_fp : multiple labels per image are saved in a new row.")
         csv_path_data_ds_fp = self.extract_data("DS_fp")
 
         logging.info(" Extract data for pyronear_ds_03_2024 TRAIN")
@@ -337,14 +385,22 @@ class ExtractRawDataFromDataset():
 
 
 class MergeCSV(): 
-    def __init__(self, all_data_dir, csv_output_dir, csv_path_data_ds_fp, csv_path_data_train, csv_path_data_val):
+    def __init__(self, all_data_dir: str, csv_output_dir: str, csv_path_data_ds_fp: str, csv_path_data_train: str, csv_path_data_val: str):
+        """_summary_
+
+        Args:
+            all_data_dir (str): Path to directory with all data.
+            csv_output_dir (str): Path of output directory to save final CSV with merging the data from the 3 datasets.
+            csv_path_data_ds_fp (str): Path to csv with extracted raw data from dataset DS_fp.
+            csv_path_data_train (str): Path to csv with extracted raw data from dataset pyronear_ds_03_2024_train.
+            csv_path_data_val (str): Path to csv with extracted raw data from dataset pyronear_ds_03_2024_val.
+        """
         self.all_data_dir = all_data_dir
         self.csv_output_dir = csv_output_dir
         self.csv_path_data_ds_fp = csv_path_data_ds_fp
         self.csv_path_data_train = csv_path_data_train 
         self.csv_path_data_val = csv_path_data_val
         self.merged_csv_path = os.path.join(self.csv_output_dir, "0_raw_data_pyronear_ds_03_2024_train_val_DS_fp_temporal_dataset.csv")
-        
         self.df_train = pd.read_csv(self.csv_path_data_train)
         self.df_val = pd.read_csv(self.csv_path_data_val)
         self.df_ds_fp = pd.read_csv(self.csv_path_data_ds_fp)
@@ -396,7 +452,7 @@ def main():
     parser = argparse.ArgumentParser(description="Get raw data from datasets DS_fp and pyronear_ds_03_2024 train / val.")
     parser.add_argument("-i", "--data_dir", type=str, default="/Users/marguerite/workspace_DS/",
                         help="Path to directory with datasets.")
-    parser.add_argument("-o", "--csv_output_dir", type=str, default="/Users/marguerite/workspace_DS/pyronear_CNN/",
+    parser.add_argument("-o", "--csv_output_dir", type=str, default="/Users/marguerite/workspace_DS/pyronear_CNN/csv/",
                         help="Output directory to save csv files with extracted data.")
     parser.add_argument("-n", "--nb_seconds_to_separate_groups", type=int, default=59,
                         help="Number of seconds to separate temporal groups.")
@@ -420,7 +476,7 @@ def main():
     logging.info("- 1/3 - Split time series with condition on datetime.")
     data_dir =  args.data_dir
     csv_output_dir = args.csv_output_dir
-    nb_seconds_to_separate_groups = 59
+    nb_seconds_to_separate_groups = args.nb_seconds_to_separate_groups
 
     if not os.path.exists(csv_output_dir): 
         logging.info(f"Creating output directory to save csv files: {csv_output_dir}")

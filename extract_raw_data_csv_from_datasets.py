@@ -10,21 +10,20 @@ import numpy as np
 import argparse
 
 class GetTimeSeriesGroups(): 
-    def __init__(self, all_data_dir:str, csv_output_dir:str, nb_seconds_to_separate_groups:str):
-        """Class to group images into time series based on this condition. 
-        Create new group if 2 consecutive images have datetime > time_condition_sec in seconds.
+    def __init__(self, all_data_dir:str, csv_output_dir:str, nb_seconds_to_separate_groups:int):
+        """Class to group images into time series based on this condition: create new group if 2 consecutive images have datetime > time_condition_sec in seconds.
 
         Args:
             all_data_dir (str): Path to the main directory with all the data.
             csv_output_dir (str): Path to output directory to save the csv containing different time series separated by the time condition.
-            nb_seconds_to_separate_groups (str): Time gap in seconds to separate time series. Defaults to 59.
+            nb_seconds_to_separate_groups (int): Time gap in seconds to separate time series. Defaults to 59.
         """
         self.all_data_dir = all_data_dir
         self.csv_output_dir = csv_output_dir
         self.nb_seconds_to_separate_groups = nb_seconds_to_separate_groups
 
     def get_group_time_series(self, input_directory:str, output_csv_path:str):
-        """Group images into time series based on this condition.
+        """Group images into time series based on this condition: separate images into groups based on their time gap.
 
         Args:
             input_directory (str): Path to input directory with images to separate into time series.

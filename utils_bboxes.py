@@ -3,50 +3,6 @@ import cv2
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import random
-from multiprocessing import Pool
-import time
-from tensorflow.keras.applications.resnet50 import preprocess_input
-from tensorflow.keras.preprocessing.image import img_to_array, load_img
-from matplotlib import pyplot as plt 
-from matplotlib.backends.backend_pdf import PdfPages
-import re
-import matplotlib.patches as patches
-
-
-def resize(img: np.ndarray, long_side_out=128, enlarge=True) -> np.ndarray: 
-    """Resize image.
-
-    Args:
-        img (np.ndarray): Image to resize.
-        long_side_out (int, optional): Longest size of the image after resizing. Defaults to 128.
-        enlarge (bool, optional): Enlarge or not. Defaults to True.
-
-    Returns:
-        np.ndarray: Resized image.
-    """
-
-    long_side = max(img.shape[:2]) 
-    resize_factor = long_side_out/long_side 
-
-    if resize_factor < 1: 
-        img = cv2.resize( 
-            img, 
-            (int(resize_factor*img.shape[1]), int(resize_factor*img.shape[0])),  
-            interpolation=cv2.INTER_AREA) 
-
-    elif resize_factor > 1: 
-        if enlarge: 
-            img = cv2.resize( 
-                img, 
-                (int(resize_factor*img.shape[1]), int(resize_factor*img.shape[0])),  
-                interpolation=cv2.INTER_CUBIC) 
-
-        else: 
-            img = img 
-
-    return img 
-
 
 def resize_by_longest_side(img: np.ndarray, output_longest_size=128, is_enlarge=True) -> np.ndarray: 
     """Resize image.
@@ -95,9 +51,6 @@ def resize_images_to_common_shape(images: list, target_height: int, target_width
         resized_images.append(resized_image)
 
     return np.array(resized_images)
-
-
-
 
 
 def get_largest_bbox_from_sequence(images_in_sequence: list, bboxes_in_sequence: list, in_yolo_format=True) -> np.ndarray:
@@ -182,7 +135,7 @@ def flatten(list_of_lists: list) -> list:
     return [element for sublist in list_of_lists for element in sublist]
 
 
-def convert_yolo_bbox_to_abs_pixel_coords(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int, image_width: int, image_height: int) -> tuple:
+def yolo_bbox2abs_pix_coords(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int, image_width: int, image_height: int) -> tuple:
     """Convert bounding box in YOLO format to absolute pixel coordinates.
 
     Args:
@@ -208,7 +161,7 @@ def convert_yolo_bbox_to_abs_pixel_coords(yolo_bbox_center_x: int, yolo_bbox_cen
     return bbox_x, bbox_y, bbox_width, bbox_height
 
 
-def convert_abs_pixel_coords_bbox_to_yolo(bbox_x: int, bbox_y: int, bbox_width: int, bbox_height: int, image_width: int, image_height: int) -> tuple:
+def abs_pixel_coords2yolo_bbox(bbox_x: int, bbox_y: int, bbox_width: int, bbox_height: int, image_width: int, image_height: int) -> tuple:
     """Convert bbox from absolute pixel coordinates to YOLO format.
 
     Args:
@@ -234,7 +187,7 @@ def convert_abs_pixel_coords_bbox_to_yolo(bbox_x: int, bbox_y: int, bbox_width: 
     return yolo_bbox_center_x, yolo_bbox_center_y, yolo_bbox_width, yolo_bbox_height
 
 
-def convert_yolo_to_other_image_abs_pixel_coords(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int,
+def yolo2new_abs_pixel_coords(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int,
                                        original_image_width: int, original_image_height: int,
                                        new_image_width: int, new_image_height: int) -> tuple:
     """Converts YOLO bbox coordinates from the original image dimension to another image dimension, in absolute pixel coordinates.
@@ -257,7 +210,7 @@ def convert_yolo_to_other_image_abs_pixel_coords(yolo_bbox_center_x: int, yolo_b
         - new_bbox_height (int): Scaled height ot the bounding box, in absolute pixel coordinates.
     """
     # Step 1: Convert YOLO bbox to original image coordinates
-    bbox_x, bbox_y, bbox_width, bbox_height = convert_yolo_bbox_to_abs_pixel_coords(
+    bbox_x, bbox_y, bbox_width, bbox_height = yolo_bbox2abs_pix_coords(
         yolo_bbox_center_x, yolo_bbox_center_y, yolo_bbox_width, yolo_bbox_height,
         original_image_width, original_image_height
     )
@@ -274,7 +227,7 @@ def convert_yolo_to_other_image_abs_pixel_coords(yolo_bbox_center_x: int, yolo_b
 def convert_yolo_with_image_reshape(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int,
                                        original_image_width: int, original_image_height: int,
                                        new_image_width: int, new_image_height: int) -> tuple: 
-    """_summary_
+    """Convert YOLO bbox with rescaling.
 
     Args:
         yolo_bbox_center_x (int): X-center of bbox in YOLO format.
@@ -295,7 +248,7 @@ def convert_yolo_with_image_reshape(yolo_bbox_center_x: int, yolo_bbox_center_y:
     """
 
     # Step 1: Convert YOLO bbox to original image coordinates
-    bbox_x, bbox_y, bbox_width, bbox_height = convert_yolo_bbox_to_abs_pixel_coords(
+    bbox_x, bbox_y, bbox_width, bbox_height = yolo_bbox2abs_pix_coords(
         yolo_bbox_center_x, yolo_bbox_center_y, yolo_bbox_width, yolo_bbox_height,
         original_image_width, original_image_height
     )
@@ -307,142 +260,12 @@ def convert_yolo_with_image_reshape(yolo_bbox_center_x: int, yolo_bbox_center_y:
     new_bbox_height = bbox_height * (new_image_height / original_image_height)
 
     # Back to YOLO
-    new_yolo_bbox_center_x, new_yolo_bbox_center_y, new_yolo_bbox_width, new_yolo_bbox_height = convert_abs_pixel_coords_bbox_to_yolo(new_bbox_x, new_bbox_y, new_bbox_width, new_bbox_height, new_image_width, new_image_height)
+    new_yolo_bbox_center_x, new_yolo_bbox_center_y, new_yolo_bbox_width, new_yolo_bbox_height = abs_pixel_coords2yolo_bbox(new_bbox_x, new_bbox_y, new_bbox_width, new_bbox_height, new_image_width, new_image_height)
     
     return new_yolo_bbox_center_x, new_yolo_bbox_center_y, new_yolo_bbox_width, new_yolo_bbox_height
 
 
-def convert_yolo_bbox_to_abs_pixel_coords(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int, image_width: int, image_height: int) -> tuple:
-    """Convert bounding box in YOLO format to absolute pixel coordinates.
-
-    Args:
-        yolo_bbox_center_x (int): X-center of bbox in YOLO format.
-        yolo_bbox_center_y (int): Y-center of bbox in YOLO format.
-        yolo_bbox_width (int): Width of bbox in YOLO format.
-        yolo_bbox_height (int): Height of bbox in YOLO format.
-        image_width (int): Image width in pixels.
-        image_height (int): Image height in pixels.
-
-    Returns:
-        tuple: bbox in absolute pixel coordinates.
-        - bbox_x (int): X-coordinate of the top-left corner of the bounding box, in absolute pixel coordinates.
-        - bbox_y (int): Y-coordinate of the top-left corner of the bounding box, in absolute pixel coordinates.
-        - bbox_width (int): Width of the bounding box, in absolute pixel coordinates.
-        - bbox_height (int): Height ot the bounding box, in absolute pixel coordinates.
-    """
-    bbox_x = (yolo_bbox_center_x - yolo_bbox_width/2)*image_width
-    bbox_y = (yolo_bbox_center_y - yolo_bbox_height/2)*image_height
-    bbox_width = yolo_bbox_width*image_width
-    bbox_height =  yolo_bbox_height*image_height
-
-    return bbox_x, bbox_y, bbox_width, bbox_height
-
-
-def convert_abs_pixel_coords_bbox_to_yolo(bbox_x: int, bbox_y: int, bbox_width: int, bbox_height: int, image_width: int, image_height: int) -> tuple:
-    """Convert bbox from absolute pixel coordinates to YOLO format.
-
-    Args:
-        bbox_x (int): X-coordinate of the top-left corner of the bounding box, in absolute pixel coordinates.
-        bbox_y (int): Y-coordinate of the top-left corner of the bounding box, in absolute pixel coordinates.
-        bbox_width (int): Width of the bounding box, in absolute pixel coordinates.
-        bbox_height (int): Height ot the bounding box, in absolute pixel coordinates.
-        image_width (int): Image width in pixels.
-        image_height (int): Image height in pixels.
-
-    Returns:
-        tuple: 
-        - yolo_bbox_center_x (int): X-center of bbox in YOLO format.
-        - yolo_bbox_center_y (int): Y-center of bbox in YOLO format.
-        - yolo_bbox_width (int): Width of bbox in YOLO format.
-        - yolo_bbox_height (int): Height of bbox in YOLO format.
-    """
-    yolo_bbox_center_x = (bbox_x + bbox_width / 2) / image_width
-    yolo_bbox_center_y = (bbox_y + bbox_height / 2) / image_height
-    yolo_bbox_width = bbox_width/image_width
-    yolo_bbox_height = bbox_height/image_height
-
-    return yolo_bbox_center_x, yolo_bbox_center_y, yolo_bbox_width, yolo_bbox_height
-
-
-def convert_yolo_to_other_image_abs_pixel_coords(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int,
-                                       original_image_width: int, original_image_height: int,
-                                       new_image_width: int, new_image_height: int) -> tuple:
-    """Converts YOLO bbox coordinates from the original image dimension to another image dimension, in absolute pixel coordinates.
-
-    Args:
-        yolo_bbox_center_x (int): X-center of bbox in YOLO format.
-        yolo_bbox_center_y (int): Y-center of bbox in YOLO format.
-        yolo_bbox_width (int): Width of bbox in YOLO format.
-        yolo_bbox_height (int): Height of bbox in YOLO format.
-        original_image_width (int): Original image width in pixels.
-        original_image_height (int): Original image height in pixels.
-        new_image_width (int): New image width in pixels, for final scaling.
-        new_image_height (int): New image height in pixels, for final scalinig.
-
-    Returns:
-        tuple: 
-        - new_bbox_x (int): Scaled X-coordinate of the top-left corner of the bounding box, in absolute pixel coordinates.
-        - new_bbox_y (int): Scaled Y-coordinate of the top-left corner of the bounding box, in absolute pixel coordinates.
-        - new_bbox_width (int): Scaled width of the bounding box, in absolute pixel coordinates.
-        - new_bbox_height (int): Scaled height ot the bounding box, in absolute pixel coordinates.
-    """
-    # Step 1: Convert YOLO bbox to original image coordinates
-    bbox_x, bbox_y, bbox_width, bbox_height = convert_yolo_bbox_to_abs_pixel_coords(
-        yolo_bbox_center_x, yolo_bbox_center_y, yolo_bbox_width, yolo_bbox_height,
-        original_image_width, original_image_height
-    )
-
-    # Step 2: Scale the coordinates to the new image dimensions
-    new_bbox_x = bbox_x * (new_image_width / original_image_width)
-    new_bbox_y = bbox_y * (new_image_height / original_image_height)
-    new_bbox_width = bbox_width * (new_image_width / original_image_width)
-    new_bbox_height = bbox_height * (new_image_height / original_image_height)
-
-    return new_bbox_x, new_bbox_y, new_bbox_width, new_bbox_height
-
-
-def convert_yolo_with_image_reshape(yolo_bbox_center_x: int, yolo_bbox_center_y: int, yolo_bbox_width: int, yolo_bbox_height: int,
-                                       original_image_width: int, original_image_height: int,
-                                       new_image_width: int, new_image_height: int) -> tuple: 
-    """_summary_
-
-    Args:
-        yolo_bbox_center_x (int): X-center of bbox in YOLO format.
-        yolo_bbox_center_y (int): Y-center of bbox in YOLO format.
-        yolo_bbox_width (int): Width of bbox in YOLO format.
-        yolo_bbox_height (int): Height of bbox in YOLO format.
-        original_image_width (int): Original image width in pixels.
-        original_image_height (int): Original image height in pixels.
-        new_image_width (int): New image width in pixels, for final scaling.
-        new_image_height (int): New image height in pixels, for final scalinig.
-
-    Returns:
-        tuple: 
-        - new_yolo_bbox_center_x (int): Scaled X-coordinate of the top-left corner of the bounding box, in YOLO format.
-        - new_yolo_bbox_center_y (int): Scaled Y-coordinate of the top-left corner of the bounding box, in YOLO format.
-        - new_yolo_bbox_width (int): Scaled width of the bounding box, in YOLO format.
-        - new_yolo_bbox_height (int): Scaled height ot the bounding box, in YOLO format.
-    """
-
-    # Step 1: Convert YOLO bbox to original image coordinates
-    bbox_x, bbox_y, bbox_width, bbox_height = convert_yolo_bbox_to_abs_pixel_coords(
-        yolo_bbox_center_x, yolo_bbox_center_y, yolo_bbox_width, yolo_bbox_height,
-        original_image_width, original_image_height
-    )
-    
-    # Step 2: Scale the coordinates to the new image dimensions
-    new_bbox_x = bbox_x * (new_image_width / original_image_width)
-    new_bbox_y = bbox_y * (new_image_height / original_image_height)
-    new_bbox_width = bbox_width * (new_image_width / original_image_width)
-    new_bbox_height = bbox_height * (new_image_height / original_image_height)
-
-    # Back to YOLO
-    new_yolo_bbox_center_x, new_yolo_bbox_center_y, new_yolo_bbox_width, new_yolo_bbox_height = convert_abs_pixel_coords_bbox_to_yolo(new_bbox_x, new_bbox_y, new_bbox_width, new_bbox_height, new_image_width, new_image_height)
-    
-    return new_yolo_bbox_center_x, new_yolo_bbox_center_y, new_yolo_bbox_width, new_yolo_bbox_height
-
-
-def is_image_shape_homogeneous_in_sequence(images_in_sequence: list) -> tuple:
+def is_same_shapes_in_seq(images_in_sequence: list) -> tuple:
     """Check if the shape of all images in a sequence is homogeneous.
 
     Args:
@@ -471,7 +294,7 @@ def is_image_shape_homogeneous_in_sequence(images_in_sequence: list) -> tuple:
     return is_homogeneous, target_height, target_width
 
 
-def homogenize_shape_images_in_sequence(images_in_sequence: list, bboxes_in_sequence: list) -> tuple: 
+def homogenize_shapes_in_seq(images_in_sequence: list, bboxes_in_sequence: list) -> tuple: 
     """Homogenize the shape of images in a sequence, if the shape varies.
 
     Args:
@@ -483,7 +306,7 @@ def homogenize_shape_images_in_sequence(images_in_sequence: list, bboxes_in_sequ
         - images_in_sequence (list): List of homogenous images (same shape) in the sequence.
         - bboxes_in_sequence (list): List of homogeneous bboxes in the sequence.
     """
-    is_homogeneous, target_height, target_width  = is_image_shape_homogeneous_in_sequence(images_in_sequence)
+    is_homogeneous, target_height, target_width  = is_same_shapes_in_seq(images_in_sequence)
 
     if not is_homogeneous:
         # "Resizing the images to ({target_height}, {target_width})
@@ -537,7 +360,7 @@ def add_largest_bbox_to_df(df: pd.DataFrame, data_dir="../", sequence_length=5) 
             bboxes_in_sequence.append(bbox)
 
             if len(images) == sequence_length:
-                images_in_sequence, bboxes_in_sequence = homogenize_shape_images_in_sequence(images_in_sequence, bboxes_in_sequence)
+                images_in_sequence, bboxes_in_sequence = homogenize_shapes_in_seq(images_in_sequence, bboxes_in_sequence)
                 
         largest_bbox = get_largest_bbox_from_sequence(images_in_sequence, bboxes_in_sequence, in_yolo_format=True)
         all_largest_bboxes.extend(largest_bbox * len(group))

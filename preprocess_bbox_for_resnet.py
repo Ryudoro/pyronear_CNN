@@ -74,7 +74,7 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
     Returns:
         tuple: Preprocessed bounding box, in absolute pixel coordinates: new_bbox_x, new_bbox_y, new_bbox_width, new_bbox_height.
     """
-    if (bbox_width < target_bbox_width_resnet) and (bbox_height < target_bbox_height_resnet):
+    if (bbox_width < target_bbox_width_resnet):
         # Diffence between target_bbox_width for resnet and the annotated bbox_width
         diff_pixels_width = target_bbox_width_resnet - bbox_width
 
@@ -97,7 +97,36 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
             new_bbox_x = int(x_left - abs(x_right - image_width))
             x_right = image_width
             new_bbox_width = int(x_right - new_bbox_x)
+    
+        if bbox_height < target_bbox_height_resnet:
+            # Diffence between target_bbox_height for resnet and the annotated bbox_height
+            diff_pixels_height = target_bbox_height_resnet - bbox_height
 
+            # Compute y-position for top side of the bbox 
+            y_top = bbox_y - diff_pixels_height/2
+
+            # Compute y-position for bottom side of the bbox
+            y_bottom = bbox_y + bbox_height +  diff_pixels_height/2
+
+            if y_top >= 0 and y_bottom <= image_height:
+                new_bbox_y = int(y_top)
+                new_bbox_height = int(y_bottom - y_top)
+
+            if y_top <0 and y_bottom <= image_height:
+                new_bbox_y = 0
+                y_bottom += abs(y_top)  
+                new_bbox_height = int(y_bottom - new_bbox_y)
+
+            if y_bottom >= image_height:
+                new_bbox_y = int(y_top - abs(y_bottom - image_height))
+                y_bottom = image_height
+                new_bbox_height = int(y_bottom - new_bbox_y)
+            
+        else:
+            new_bbox_y = bbox_y
+            new_bbox_height = bbox_height
+    
+    if bbox_height < target_bbox_height_resnet:
         # Diffence between target_bbox_height for resnet and the annotated bbox_height
         diff_pixels_height = target_bbox_height_resnet - bbox_height
 
@@ -120,7 +149,29 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
             new_bbox_y = int(y_top - abs(y_bottom - image_height))
             y_bottom = image_height
             new_bbox_height = int(y_bottom - new_bbox_y)
-        
+
+        if (bbox_width < target_bbox_width_resnet):
+            diff_pixels_width = target_bbox_width_resnet - bbox_width
+            x_left = bbox_x - diff_pixels_width/2
+            x_right = bbox_x + bbox_width +  diff_pixels_width/2
+
+            if x_left >= 0 and x_right <= image_width:
+                new_bbox_x = int(x_left)
+                new_bbox_width = int(x_right - x_left)
+
+            if x_left <0 and x_right <= image_width:
+                new_bbox_x = 0
+                x_right += abs(x_left)  
+                new_bbox_width = int(x_right - new_bbox_x)
+
+            if x_right >= image_width:
+                new_bbox_x = int(x_left - abs(x_right - image_width))
+                x_right = image_width
+                new_bbox_width = int(x_right - new_bbox_x)
+
+        else: 
+            new_bbox_x = bbox_x
+            new_bbox_width = bbox_width
         
     if (bbox_width > target_bbox_width_resnet) and (bbox_height <=target_bbox_height_resnet):
         if not to_downsize:

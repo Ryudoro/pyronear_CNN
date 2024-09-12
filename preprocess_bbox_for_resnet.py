@@ -74,7 +74,7 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
     Returns:
         tuple: Preprocessed bounding box, in absolute pixel coordinates: new_bbox_x, new_bbox_y, new_bbox_width, new_bbox_height.
     """
-    if bbox_width < target_bbox_width_resnet:
+    if (bbox_width < target_bbox_width_resnet) and (bbox_height < target_bbox_height_resnet):
         # Diffence between target_bbox_width for resnet and the annotated bbox_width
         diff_pixels_width = target_bbox_width_resnet - bbox_width
 
@@ -97,9 +97,7 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
             new_bbox_x = int(x_left - abs(x_right - image_width))
             x_right = image_width
             new_bbox_width = int(x_right - new_bbox_x)
-            print(new_bbox_width)
 
-    if bbox_height < target_bbox_height_resnet:
         # Diffence between target_bbox_height for resnet and the annotated bbox_height
         diff_pixels_height = target_bbox_height_resnet - bbox_height
 
@@ -124,7 +122,7 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
             new_bbox_height = int(y_bottom - new_bbox_y)
         
         
-    if bbox_width > target_bbox_width_resnet and bbox_height <=target_bbox_height_resnet:
+    if (bbox_width > target_bbox_width_resnet) and (bbox_height <=target_bbox_height_resnet):
         if not to_downsize:
             new_bbox_width = target_bbox_width_resnet
         else:
@@ -133,7 +131,7 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
         new_bbox_y = bbox_y
         new_bbox_height = bbox_height
     
-    if bbox_width > target_bbox_width_resnet and bbox_height > target_bbox_height_resnet:
+    if (bbox_width > target_bbox_width_resnet) and (bbox_height > target_bbox_height_resnet):
         if not to_downsize:
             new_bbox_width = target_bbox_width_resnet
             new_bbox_height = target_bbox_height_resnet
@@ -143,7 +141,7 @@ def preprocess_bbox_for_resnet(bbox_x: int, bbox_y: int, bbox_width: int, bbox_h
         new_bbox_x = bbox_x
         new_bbox_y = bbox_y
 
-    if bbox_height > target_bbox_height_resnet and bbox_width <= target_bbox_width_resnet:
+    if (bbox_height > target_bbox_height_resnet) and (bbox_width <= target_bbox_width_resnet):
         if not to_downsize:
             new_bbox_height = target_bbox_height_resnet
         else:

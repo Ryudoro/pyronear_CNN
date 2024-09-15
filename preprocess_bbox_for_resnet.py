@@ -69,11 +69,38 @@ def load_and_process_image_for_resnet(image_path: str, bbox:tuple, target_size=(
     center_y = bbox_y + bbox_height // 2
 
     # Coordinates for cropping around the center
-    left = int(max(center_x - crop_size // 2, 0))
-    top = int(max(center_y - crop_size // 2, 0))
-    right = int(min(center_x + crop_size // 2, image_width))
-    bottom = int(min(center_y + crop_size // 2, image_height))
-    
+    left = int(center_x - crop_size // 2)
+    top = int(center_y - crop_size // 2)
+    right = int(center_x + crop_size // 2)
+    bottom = int(center_y + crop_size // 2)
+
+    # Deal with border limit-cases 
+    # If the left border is negative, put it to 0
+    # And translate the bbox to the right
+    if left < 0:
+        right += abs(left)
+        left = 0
+    # If the top border is negative, put it to 0
+    # And translate the bbox to the bottom
+    if top < 0:
+        bottom += abs(top)
+        top = 0
+    # If the right border is > image_width, put it to image_width
+    # And translate the bbox to the left
+    if right > image_width:
+        left -= (right - image_width)
+        right = image_width
+    # If the bottom border is > image_height, put it to image_height
+    # And translate the bbox to the top
+    if bottom > image_height:
+        top -= (bottom - image_height)
+        bottom = image_height
+
+    left = max(0, left)
+    top = max(0, top)
+    right = min(image_width, right)
+    bottom = min(image_height, bottom)
+
     # Crop the original image 
     cropped_image = image[top:bottom, left:right]
 

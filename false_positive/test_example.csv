@@ -1,0 +1,7 @@
+img_rel_path,label_rel_path,has_label_file,category_label,detection_label,environment_label
+images/pyronear_ferion_3_2023_10_20T13_24_46.jpg,labels/pyronear_ferion_3_2023_10_20T13_24_46.txt,True,brume,['brume'],[]
+images/pyronear_marguerite_1_2023_09_18T16_09_05.jpg,labels/pyronear_marguerite_1_2023_09_18T16_09_05.txt,True,glare,['glare'],[]
+images/pyronear_brison_2_2023_10_30T07_51_54.jpg,labels/pyronear_brison_2_2023_10_30T07_51_54.txt,True,brume,"['batiment', 'brume']",['brume']
+images/pyronear_marguerite_3_2023_09_18T10_39_00.jpg,labels/pyronear_marguerite_3_2023_09_18T10_39_00.txt,True,arbre,['arbre'],['brume']
+images/pyronear_cabanelle_1_2023_10_13T09_18_03.jpg,labels/pyronear_cabanelle_1_2023_10_13T09_18_03.txt,True,grosnuages,['grosnuages'],[]
+images/pyronear_marguerite_4_2023_10_29T13_32_15.jpg,labels/pyronear_marguerite_4_2023_10_29T13_32_15.txt,True,batiment,['batiment'],"['brume', 'pluie']"
